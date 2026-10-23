@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A capsule tilted 45 degrees -->
+    <group android:pivotX="54" android:pivotY="54" android:rotation="-45">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M54,32 h0 a14,14 0 0 1 14,14 v8 h-28 v-8 a14,14 0 0 1 14,-14 z" />
+        <path android:fillColor="#FF5EEAD4"
+            android:pathData="M40,54 h28 v8 a14,14 0 0 1 -28,0 z" />
+    </group>
+</vector>
