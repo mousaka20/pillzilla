@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
@@ -55,6 +56,7 @@ fun EditReminderScreen(viewModel: AppViewModel, reminderId: Int, onDone: () -> U
     var days by remember(reminderId) { mutableIntStateOf(original.daysMask) }
     var enabled by remember(reminderId) { mutableStateOf(original.enabled) }
     var showPicker by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
 
     val pending by viewModel.pending.collectAsStateWithLifecycle()
     val active = pending.firstOrNull { it.reminderId == reminderId }
@@ -162,6 +164,35 @@ fun EditReminderScreen(viewModel: AppViewModel, reminderId: Int, onDone: () -> U
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) { Text("Save", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+
+        TextButton(
+            onClick = { confirmDelete = true },
+            enabled = active == null,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = null, tint = if (active == null) PzColors.Red else PzColors.Muted)
+            Text(
+                if (active == null) "  Delete reminder" else "  Can be deleted once this reminder has ended",
+                color = if (active == null) PzColors.Red else PzColors.Muted,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete ${original.name}?") },
+            text = { Text("Its alarms stop. Your log and points stay.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    viewModel.cancelAssign()
+                    viewModel.deleteReminder(reminderId, onDone)
+                }) { Text("Delete", color = PzColors.Red) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+        )
     }
 
     if (showPicker) {

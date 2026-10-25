@@ -13,13 +13,33 @@ android {
         applicationId = "app.pillzilla"
         minSdk = 31
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    // Release signing comes from environment variables, set by the release workflow from repository secrets.
+    val keystoreFile = System.getenv("PZ_KEYSTORE_FILE")
+    signingConfigs {
+        if (keystoreFile != null) {
+            create("release") {
+                storeFile = file(keystoreFile)
+                storePassword = System.getenv("PZ_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("PZ_KEY_ALIAS")
+                keyPassword = System.getenv("PZ_KEY_PASSWORD")
+            }
+        }
+    }
+
+    // F-Droid rejects the encrypted dependency metadata block that AGP adds by default.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keystoreFile != null) signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

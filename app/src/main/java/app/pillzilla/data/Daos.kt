@@ -23,8 +23,17 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE tagUid = :uid LIMIT 1")
     suspend fun findByTag(uid: String): Reminder?
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertAll(reminders: List<Reminder>)
+    @Query("SELECT COUNT(*) FROM reminders")
+    suspend fun count(): Int
+
+    @Query("SELECT COALESCE(MAX(id), 0) FROM reminders")
+    suspend fun maxId(): Int
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insert(reminder: Reminder)
+
+    @Delete
+    suspend fun delete(reminder: Reminder)
 
     @Update
     suspend fun update(reminder: Reminder)
@@ -52,6 +61,9 @@ interface OccurrenceDao {
 
     @Update
     suspend fun update(occurrence: Occurrence)
+
+    @Query("DELETE FROM occurrences WHERE reminderId = :reminderId AND status = 'PENDING'")
+    suspend fun deletePendingFor(reminderId: Int)
 }
 
 @Dao

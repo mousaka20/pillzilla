@@ -7,7 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
-import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import app.pillzilla.R
 import app.pillzilla.data.Reminder
@@ -18,18 +18,25 @@ class Notifier(private val context: Context) {
     private val manager = context.getSystemService(NotificationManager::class.java)
 
     fun createChannels() {
-        val alarm = NotificationChannel(CHANNEL_ALARM, "Medication alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Rings until you scan the tag next to your meds"
+        // Channel settings are fixed once created, so the old channel that used the phone's alarm sound is replaced.
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_ALARM)
+        val alarm = NotificationChannel(CHANNEL_ALARM, "Medication reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "A short ping and buzz until you scan the tag next to your meds"
             setSound(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
-                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build(),
+                Uri.parse("android.resource://${context.packageName}/${R.raw.pillzilla_ping}"),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
             )
             enableVibration(true)
-            vibrationPattern = longArrayOf(0, 600, 400, 600, 400, 600)
+            vibrationPattern = PING_VIBRATION
             setBypassDnd(true)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
-        val info = NotificationChannel(CHANNEL_INFO, "Confirmations and missed doses", NotificationManager.IMPORTANCE_DEFAULT)
+        val info = NotificationChannel(CHANNEL_INFO, "Confirmations and missed doses", NotificationManager.IMPORTANCE_LOW).apply {
+            setSound(null, null)
+        }
         manager.createNotificationChannels(listOf(alarm, info))
     }
 
@@ -91,11 +98,15 @@ class Notifier(private val context: Context) {
         manager.notify(id, notification)
     }
 
-    private fun alarmId(reminderId: Int) = 100 + reminderId
-    private fun infoId(reminderId: Int) = 200 + reminderId
+    private fun alarmId(reminderId: Int) = 100_000 + reminderId
+    private fun infoId(reminderId: Int) = 200_000 + reminderId
 
     companion object {
-        const val CHANNEL_ALARM = "alarm"
+        const val CHANNEL_ALARM = "ping"
+        private const val LEGACY_CHANNEL_ALARM = "alarm"
+
+        /** Two short buzzes, matching the two-tone ping. */
+        val PING_VIBRATION = longArrayOf(0, 120, 90, 160)
         const val CHANNEL_INFO = "info"
     }
 }

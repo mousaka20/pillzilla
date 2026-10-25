@@ -1,0 +1,11 @@
+<p>Pillzilla makes sure you take your meds on time, built with ADHD brains in mind. Each reminder pings until you walk to your pills and hold the NFC tag next to them to the phone. Snoozing or swiping it away doesn't count.</p>
+<ul>
+<li>Add as many reminders as you need, each with its own time, weekdays and NFC tag</li>
+<li>Short ping and buzz at the set time, then after 15, 30, 45 and 60 minutes, then every 10 minutes until the tag is scanned</li>
+<li>After 2 h 30 min the dose is logged as missed</li>
+<li>Scanning works even when the app is closed: Pillzilla writes a tiny marker to the tag (NTAG213 and similar)</li>
+<li>A scan up to 5 minutes early counts</li>
+<li>Week and month log with on-time rate, misses and average delay</li>
+<li>Points for doses taken within 20 minutes, streak milestones with multipliers, and your own rewards to redeem</li>
+</ul>
+<p>Requires Android 12 or newer and NFC. No internet access, no tracking. Everything stays on your phone.</p>

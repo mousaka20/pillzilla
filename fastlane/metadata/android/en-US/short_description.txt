@@ -1,0 +1,1 @@
+Medication reminders you can only clear by scanning the NFC tag at your pills

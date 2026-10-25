@@ -19,6 +19,11 @@ sealed interface ScanResult {
     data object UnknownTag : ScanResult
 }
 
+sealed interface DeleteResult {
+    data object Ok : DeleteResult
+    data object ReminderActive : DeleteResult
+}
+
 sealed interface AssignResult {
     data object Ok : AssignResult
     data class TagInUse(val owner: Reminder) : AssignResult
@@ -35,8 +40,30 @@ class Pillzilla private constructor(context: Context) {
     private val points = PointsEngine(db, rules)
     private val lock = Mutex()
 
-    suspend fun ensureSeeded() {
-        db.reminders().insertAll(AppDatabase.DEFAULT_REMINDERS)
+    /** Creates the first reminder on a fresh install only, so deleting every reminder sticks. */
+    suspend fun ensureSeeded() = lock.withLock {
+        val prefs = appContext.getSharedPreferences("app", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("seeded", false)) return@withLock
+        if (db.reminders().count() == 0) db.reminders().insert(AppDatabase.FIRST_REMINDER)
+        prefs.edit().putBoolean("seeded", true).apply()
+    }
+
+    /** Adds a reminder (no tag yet, so it doesn't ring until one is assigned) and returns its id. */
+    suspend fun addReminder(): Int = lock.withLock {
+        val id = db.reminders().maxId() + 1
+        db.reminders().insert(Reminder(id = id, name = "Reminder $id", hour = 12, minute = 0))
+        id
+    }
+
+    /** Deletes a reminder and its alarm. Not allowed while it's ringing, so deleting never skips a dose. */
+    suspend fun deleteReminder(reminderId: Int): DeleteResult = lock.withLock {
+        val reminder = db.reminders().get(reminderId) ?: return@withLock DeleteResult.Ok
+        if (db.occurrences().pendingFor(reminderId) != null) return@withLock DeleteResult.ReminderActive
+        scheduler.cancel(reminderId)
+        notifier.cancelAlarm(reminderId)
+        db.occurrences().deletePendingFor(reminderId)
+        db.reminders().delete(reminder)
+        DeleteResult.Ok
     }
 
     /** Rebuilds every alarm, resuming nudges for doses that are still open. */

@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Pillzilla: a capsule with monster spikes and one eye. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- A capsule tilted 45 degrees -->
-    <group android:pivotX="54" android:pivotY="54" android:rotation="-45">
+    <group android:pivotX="54" android:pivotY="54" android:rotation="-30" android:scaleX="1.18" android:scaleY="1.18">
+        <path android:fillColor="#FFFBBF24"
+            android:pathData="M36,43 l5,-11 l5,11 z M47,43 l5,-13 l5,13 z M58,43 l5,-11 l5,11 z" />
         <path android:fillColor="#FFFFFFFF"
-            android:pathData="M54,32 h0 a14,14 0 0 1 14,14 v8 h-28 v-8 a14,14 0 0 1 14,-14 z" />
+            android:pathData="M38,42 h16 v24 h-16 a12,12 0 0 1 0,-24 z" />
         <path android:fillColor="#FF5EEAD4"
-            android:pathData="M40,54 h28 v8 a14,14 0 0 1 -28,0 z" />
+            android:pathData="M54,42 h16 a12,12 0 0 1 0,24 h-16 z" />
+        <path android:fillColor="#FF0B3B37"
+            android:pathData="M33,52 a3.5,3.5 0 1 0 7,0 a3.5,3.5 0 1 0 -7,0 z" />
     </group>
 </vector>
