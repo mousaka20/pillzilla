@@ -37,10 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
                 .also { instance = it }
         }
 
-        val DEFAULT_REMINDERS = listOf(
-            Reminder(id = 1, name = "Morning", hour = 8, minute = 0),
-            Reminder(id = 2, name = "Midday", hour = 13, minute = 30),
-            Reminder(id = 3, name = "Evening", hour = 21, minute = 0),
-        )
+        /** The reminder a fresh install starts with. More can be added in the app. */
+        val FIRST_REMINDER = Reminder(id = 1, name = "Morning", hour = 8, minute = 0)
     }
 }

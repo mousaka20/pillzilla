@@ -5,6 +5,7 @@ import android.nfc.Tag
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.pillzilla.AssignResult
+import app.pillzilla.DeleteResult
 import app.pillzilla.Pillzilla
 import app.pillzilla.ScanResult
 import app.pillzilla.data.Occurrence
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Tag assignment in progress for one reminder. */
 data class AssignState(
@@ -76,6 +78,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveReminder(reminder: Reminder) = viewModelScope.launch(Dispatchers.IO) { app.saveReminder(reminder) }
+
+    fun addReminder(onCreated: (Int) -> Unit) = viewModelScope.launch {
+        val id = withContext(Dispatchers.IO) { app.addReminder() }
+        onCreated(id)
+    }
+
+    fun deleteReminder(reminderId: Int, onDeleted: () -> Unit) = viewModelScope.launch {
+        when (withContext(Dispatchers.IO) { app.deleteReminder(reminderId) }) {
+            DeleteResult.Ok -> onDeleted()
+            DeleteResult.ReminderActive -> _message.value = "This reminder is active. You can delete it once it has ended."
+        }
+    }
 
     fun startAssign(reminderId: Int, suggestedName: String) {
         _assign.value = AssignState(reminderId, suggestedName)

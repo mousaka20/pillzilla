@@ -1,0 +1,4 @@
+* Short custom ping and buzz instead of the phone's default alarm
+* Start with one reminder, add or delete reminders as needed
+* New app icon
+* Signed releases and an F-Droid repository for Droid-ify

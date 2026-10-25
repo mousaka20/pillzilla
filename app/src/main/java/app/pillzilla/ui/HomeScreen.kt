@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Star
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -123,6 +126,17 @@ fun HomeScreen(
                 now = now,
                 onClick = { onEdit(reminder.id) },
             )
+        }
+
+        if (reminders.isEmpty()) {
+            Text("No reminders yet. Add one and assign a tag to it.", fontSize = 14.sp, color = PzColors.Muted)
+        }
+        OutlinedButton(
+            onClick = { viewModel.addReminder(onEdit) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null)
+            Text("  Add reminder", fontWeight = FontWeight.Bold)
         }
 
         Card(color = PzColors.TealSoft) {

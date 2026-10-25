@@ -2,9 +2,6 @@ package app.pillzilla.ui
 
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.Ringtone
-import android.media.RingtoneManager
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -53,9 +50,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Full-screen alarm shown over the lock screen. Only the reminder's own tag clears it. */
+/**
+ * Full-screen reminder shown over the lock screen. The notification plays the short ping; this
+ * screen stays silent. Only the reminder's own tag clears it.
+ */
 class AlarmActivity : ComponentActivity() {
-    private var ringtone: Ringtone? = null
     private var reminderId by mutableStateOf(-1)
     private var confirmedText by mutableStateOf<String?>(null)
     private var wrongTagText by mutableStateOf<String?>(null)
@@ -99,14 +98,12 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        startRinging()
         TagIo.enableReader(this) { tag ->
             val uid = TagIo.uidOf(tag)
             lifecycleScope.launch {
                 val result = withContext(Dispatchers.IO) { Pillzilla.get(this@AlarmActivity).handleScan(uid) }
                 when (result) {
                     is ScanResult.Confirmed -> {
-                        stopRinging()
                         confirmedText = "${result.reminder.name} confirmed" +
                             if (result.points > 0) ". +${result.points} points!" else "."
                         delay(2_000)
@@ -122,28 +119,6 @@ class AlarmActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         TagIo.disableReader(this)
-        stopRinging()
-    }
-
-    private fun startRinging() {
-        if (ringtone?.isPlaying == true || confirmedText != null) return
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
-            audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
-            isLooping = true
-            play()
-        }
-        // Ring for one minute per nudge; the next nudge rings again.
-        lifecycleScope.launch {
-            delay(60_000)
-            stopRinging()
-        }
-    }
-
-    private fun stopRinging() {
-        ringtone?.stop()
-        ringtone = null
     }
 
     companion object {

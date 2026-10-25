@@ -1,0 +1,169 @@
+name: Release
+
+# Tag a version (git tag v0.2.0 && git push --tags) to publish a signed APK as a GitHub
+# release and update the F-Droid repository on GitHub Pages, which Droid-ify can follow.
+# Pull requests run the same steps with a throwaway key and publish nothing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - app/build.gradle.kts
+      - fastlane/**
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PUBLISH: ${{ github.event_name != 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.PZ_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.PZ_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.PZ_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.PZ_KEY_PASSWORD }}
+        run: |
+          KEYSTORE="$RUNNER_TEMP/release.jks"
+          if [ "$PUBLISH" = "true" ]; then
+            if [ -z "$KEYSTORE_BASE64" ]; then
+              echo "::error::Signing secrets are missing. See README, section Releases."
+              exit 1
+            fi
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          else
+            KEYSTORE_PASSWORD=dry-run-only
+            KEY_ALIAS=pillzilla
+            KEY_PASSWORD=dry-run-only
+            keytool -genkeypair -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" \
+              -alias "$KEY_ALIAS" -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Pillzilla dry run"
+          fi
+          {
+            echo "PZ_KEYSTORE_FILE=$KEYSTORE"
+            echo "PZ_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "PZ_KEY_ALIAS=$KEY_ALIAS"
+            echo "PZ_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        run: ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+
+      - name: Name the APK
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} doesn't match versionName $VERSION in app/build.gradle.kts"
+            exit 1
+          fi
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "pillzilla-$VERSION.apk"
+
+      - name: Build F-Droid repository
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fdroid-venv"
+          "$RUNNER_TEMP/fdroid-venv/bin/pip" install -q fdroidserver
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          REPO_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/repo"
+          mkdir -p fdroid/repo fdroid/metadata/app.pillzilla
+          cp "pillzilla-$VERSION.apk" fdroid/repo/
+          cp -r fastlane/metadata/android/. fdroid/metadata/app.pillzilla/
+          cat > fdroid/metadata/app.pillzilla.yml <<YAML
+          Categories:
+            - Time
+          License: MIT
+          AuthorName: ${GITHUB_REPOSITORY_OWNER}
+          SourceCode: https://github.com/${GITHUB_REPOSITORY}
+          IssueTracker: https://github.com/${GITHUB_REPOSITORY}/issues
+          AutoName: Pillzilla
+          YAML
+          cat > fdroid/config.yml <<YAML
+          sdk_path: ${ANDROID_HOME}
+          apksigner: ${APKSIGNER}
+          repo_url: ${REPO_URL}
+          repo_name: Pillzilla
+          repo_description: >-
+            Pillzilla releases, built from https://github.com/${GITHUB_REPOSITORY}
+          archive_older: 0
+          keystore: ${PZ_KEYSTORE_FILE}
+          repo_keyalias: ${PZ_KEY_ALIAS}
+          keystorepass:
+            env: PZ_KEYSTORE_PASSWORD
+          keypass:
+            env: PZ_KEY_PASSWORD
+          YAML
+          chmod 0600 fdroid/config.yml
+          if ! (cd fdroid && "$RUNNER_TEMP/fdroid-venv/bin/fdroid" update --pretty) > fdroid.log 2>&1; then
+            cat fdroid.log
+            tail -15 fdroid.log | while IFS= read -r line; do echo "::error title=fdroid update::$line"; done
+            exit 1
+          fi
+          cat fdroid.log
+
+          FINGERPRINT=$(keytool -list -v -keystore "$PZ_KEYSTORE_FILE" -storepass "$PZ_KEYSTORE_PASSWORD" -alias "$PZ_KEY_ALIAS" \
+            | sed -n 's/.*SHA256: //p' | tr -d ':' | head -1)
+          mkdir -p site
+          cp -r fdroid/repo site/repo
+          cat > site/index.html <<HTML
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Pillzilla F-Droid repository</title></head>
+          <body style="font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; line-height: 1.5">
+          <h1>Pillzilla</h1>
+          <p>Add this repository in Droid-ify or F-Droid, then install Pillzilla from it. Updates arrive like any other app.</p>
+          <p><a href="${REPO_URL}?fingerprint=${FINGERPRINT}">Open this link on your phone to add the repository</a></p>
+          <p>Or add it by hand:<br>Address: <code>${REPO_URL}</code><br>Fingerprint: <code style="word-break: break-all">${FINGERPRINT}</code></p>
+          <p>Current version: ${VERSION}. <a href="repo/pillzilla-${VERSION}.apk">Download the APK directly</a>.</p>
+          </body></html>
+          HTML
+          echo "Repository: $REPO_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Fingerprint: $FINGERPRINT" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pillzilla-release-apk
+          path: pillzilla-*.apk
+
+      - name: Upload GitHub Pages site
+        if: env.PUBLISH == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pillzilla-*.apk
+          body_path: fastlane/metadata/android/en-US/changelogs/${{ env.VERSION_CODE }}.txt
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
