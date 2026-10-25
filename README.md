@@ -1,6 +1,19 @@
+<p align="center"><img src="docs/images/icon.png" width="128" alt="Pillzilla icon: a capsule with monster spikes"></p>
+
 # Pillzilla
 
 An Android app that makes sure you take your meds on time. Each reminder pings and buzzes, and keeps nagging until you scan the NFC tag you placed next to your pills.
+
+<p align="center">
+  <img src="docs/images/home.png" width="200" alt="Home screen with today's reminders">
+  <img src="docs/images/alarm.png" width="200" alt="Active reminder asking to scan the tag">
+  <img src="docs/images/lock-screen.png" width="200" alt="Lock screen notifications">
+</p>
+<p align="center">
+  <img src="docs/images/edit-reminder.png" width="200" alt="Editing a reminder: time, weekdays, tag">
+  <img src="docs/images/rewards.png" width="200" alt="Points, streaks and rewards">
+</p>
+<p align="center"><sub>Design mockups of the main screens.</sub></p>
 
 ## How it works
 
