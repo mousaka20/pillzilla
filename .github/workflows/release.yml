@@ -81,8 +81,9 @@ jobs:
 
       - name: Build F-Droid repository
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq fdroidserver
+          python3 -m venv "$RUNNER_TEMP/fdroid-venv"
+          "$RUNNER_TEMP/fdroid-venv/bin/pip" install -q fdroidserver
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           REPO_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/repo"
           mkdir -p fdroid/repo fdroid/metadata/app.pillzilla
           cp "pillzilla-$VERSION.apk" fdroid/repo/
@@ -98,6 +99,7 @@ jobs:
           YAML
           cat > fdroid/config.yml <<YAML
           sdk_path: ${ANDROID_HOME}
+          apksigner: ${APKSIGNER}
           repo_url: ${REPO_URL}
           repo_name: Pillzilla
           repo_description: >-
@@ -111,7 +113,12 @@ jobs:
             env: PZ_KEY_PASSWORD
           YAML
           chmod 0600 fdroid/config.yml
-          (cd fdroid && fdroid update --pretty)
+          if ! (cd fdroid && "$RUNNER_TEMP/fdroid-venv/bin/fdroid" update --pretty) > fdroid.log 2>&1; then
+            cat fdroid.log
+            tail -15 fdroid.log | while IFS= read -r line; do echo "::error title=fdroid update::$line"; done
+            exit 1
+          fi
+          cat fdroid.log
 
           FINGERPRINT=$(keytool -list -v -keystore "$PZ_KEYSTORE_FILE" -storepass "$PZ_KEYSTORE_PASSWORD" -alias "$PZ_KEY_ALIAS" \
             | sed -n 's/.*SHA256: //p' | tr -d ':' | head -1)
